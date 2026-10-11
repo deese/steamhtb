@@ -1,0 +1,24 @@
+<div id="hltb-nodur-row-{{ game.appid }}" class="bg-steam-panel/50 border border-steam-line rounded-lg p-3 flex items-center gap-3">
+  <img src="{{ game.header_image }}" alt="" loading="lazy" class="w-20 aspect-[460/215] object-cover rounded bg-steam-bg shrink-0" />
+  <div class="flex-1 min-w-0">
+    <p class="font-medium text-slate-100 truncate">{{ game.name }}</p>
+    {% if game.hltb_main %}
+    <p class="text-xs text-steam-accent2">✓ Ya tiene duración: {{ "%.0f"|format(game.hltb_main) }}h historia</p>
+    {% else %}
+    <p class="text-xs text-slate-500">
+      Encontrado en HLTB como "{{ game.hltb_title }}", pero sin tiempos enviados por la comunidad todavía.
+    </p>
+    {% endif %}
+  </div>
+  <button
+    hx-post="/admin/hltb/recheck"
+    hx-vals='{"appid": {{ game.appid }}}'
+    hx-target="#hltb-nodur-row-{{ game.appid }}"
+    hx-swap="outerHTML"
+    hx-indicator="#hltb-nodur-loading-{{ game.appid }}"
+    class="text-xs px-2.5 py-1.5 rounded border border-steam-line hover:border-steam-accent hover:text-steam-accent transition shrink-0"
+  >
+    <span id="hltb-nodur-loading-{{ game.appid }}" class="htmx-indicator">…</span>
+    Comprobar de nuevo
+  </button>
+</div>

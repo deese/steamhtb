@@ -1,0 +1,32 @@
+services:
+  steamhtb:
+    build: .
+    container_name: steamhtb
+    restart: unless-stopped
+    environment:
+      STEAM_API_KEY: ${STEAM_API_KEY}
+      STEAM_ID: ${STEAM_ID}
+      # Behind NPM (a real domain, reachable beyond your own Tailscale) you
+      # likely want the login gate on — set these two and uncomment:
+      # STEAMHTB_LOGIN: "true"
+      # STEAMHTB_LOGIN_PASSWORD: ${STEAMHTB_LOGIN_PASSWORD}
+      # STEAMHTB_COOKIE_SECURE: "true"   # NPM terminates HTTPS in front of this
+      # STEAMHTB_SESSION_DAYS: "180"     # optional, defaults to 180 (6 months)
+    volumes:
+      - steamhtb_data:/app/data
+    networks:
+      - shared_proxy_network
+    # No ports published — Nginx Proxy Manager reaches it directly over
+    # shared_proxy_network at http://steamhtb:8000. Uncomment below only if
+    # you want to hit it directly without going through NPM (e.g. bound to a
+    # specific host IP, matching the Tailscale-only setup used for the plain
+    # uvicorn deployment):
+    # ports:
+    #   - "100.125.0.127:8000:8000"
+
+volumes:
+  steamhtb_data:
+
+networks:
+  shared_proxy_network:
+    external: true

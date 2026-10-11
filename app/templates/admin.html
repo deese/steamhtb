@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Admin · Steam × HowLongToBeat{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-xl font-bold text-white tracking-tight">Admin · mapeo manual</h1>
+      <p class="text-sm text-slate-400 mt-0.5">Resolver juegos que el emparejado automático no pudo mapear.</p>
+    </div>
+    <a href="/" class="text-sm text-steam-accent hover:underline">← Volver a la librería</a>
+  </div>
+
+  <section class="mb-10">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">Buscar un juego</h2>
+    <p class="text-xs text-slate-500 mb-3">
+      Busca cualquier juego de tu librería (esté como esté su HLTB — ya emparejado, sin coincidencia,
+      con baja confianza o marcado no disponible) y corrígelo aquí directamente.
+    </p>
+    <input
+      type="text"
+      name="q"
+      placeholder="Buscar juego por nombre…"
+      autocomplete="off"
+      hx-get="/admin/hltb/game-search"
+      hx-target="#hltb-game-search-results"
+      hx-swap="innerHTML"
+      hx-trigger="keyup changed delay:400ms"
+      class="w-full bg-steam-bg border border-steam-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent"
+    />
+    <div id="hltb-game-search-results" class="mt-3"></div>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">Family Sharing</h2>
+    <p class="text-xs text-slate-500 mb-3">
+      Sube tu <code class="text-slate-400">localconfig.vdf</code> (normalmente en
+      <code class="text-slate-400">Steam/userdata/&lt;tu_id&gt;/config/localconfig.vdf</code> en el
+      equipo donde juegas) para añadir los juegos a los que tienes acceso por Family Sharing — esos
+      nunca aparecen en tu librería propia porque Steam no los expone por API. Puedes volver a subir
+      el fichero cuando quieras para añadir los que falten; lo que ya tengas no se toca.
+    </p>
+    <form hx-post="/admin/family/upload" hx-target="#family-upload-result" hx-swap="innerHTML" hx-encoding="multipart/form-data" class="flex items-center gap-3">
+      <input
+        type="file"
+        name="file"
+        required
+        class="text-xs text-slate-400 file:mr-3 file:px-2.5 file:py-1.5 file:rounded file:border file:border-steam-line file:bg-steam-bg file:text-slate-200 file:text-xs hover:file:border-steam-accent"
+      />
+      <button type="submit" class="text-xs px-2.5 py-1.5 rounded bg-steam-accent text-slate-900 font-medium hover:brightness-110 transition shrink-0">
+        Subir
+      </button>
+    </form>
+    <div id="family-upload-result" class="mt-2"></div>
+  </section>
+
+  <section class="mb-10">
+    <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">
+        Sin coincidencia en HowLongToBeat
+        <span class="text-slate-600">({{ missing_hltb|length }})</span>
+      </h2>
+      <div class="flex items-center gap-3">
+        <button
+          hx-post="/admin/hltb/retry-all"
+          hx-target="#hltb-retry-status"
+          hx-swap="outerHTML"
+          class="text-xs px-2.5 py-1.5 rounded border border-steam-line hover:border-steam-accent hover:text-steam-accent transition"
+        >
+          Reintentar todos automáticamente
+        </button>
+        <div id="hltb-retry-status" class="text-sm"></div>
+      </div>
+    </div>
+    <p class="text-xs text-slate-500 mb-3">
+      Vuelve a buscar (con el mismo criterio automático de la sincronización) cada juego de esta lista.
+      Bastantes fallan solo por un fallo de red puntual durante la sync original, no porque no existan
+      en HowLongToBeat — esto suele resolver una buena parte sin tener que buscarlos a mano.
+    </p>
+    <div class="space-y-2" id="missing-hltb-list" hx-get="/admin/hltb/missing-list" hx-trigger="hltbListUpdated from:body" hx-swap="innerHTML">
+      {% for game in missing_hltb %}
+        {% include "partials/admin_hltb_unmatched_row.html" %}
+      {% else %}
+      <p class="text-sm text-slate-500">Todo mapeado 🎉</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">
+      Encontrados en HLTB, sin duración todavía
+      <span class="text-slate-600">({{ no_duration_hltb|length }})</span>
+    </h2>
+    <p class="text-xs text-slate-500 mb-3">
+      Ya sabemos qué página de HowLongToBeat es la correcta, pero nadie ha enviado tiempos de juego
+      todavía (normal en lanzamientos muy recientes o juegos de nicho). No hay nada que arreglar aquí —
+      solo toca esperar a que la comunidad de HLTB los rellene.
+    </p>
+    <div class="space-y-2" id="no-duration-hltb-list">
+      {% for game in no_duration_hltb %}
+        {% include "partials/admin_hltb_no_duration_row.html" %}
+      {% else %}
+      <p class="text-sm text-slate-500">Ninguno.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">
+      Marcados como "no disponible en HLTB"
+      <span class="text-slate-600">({{ unavailable_hltb|length }})</span>
+    </h2>
+    <div class="space-y-2" id="unavailable-hltb-list">
+      {% for game in unavailable_hltb %}
+        {% include "partials/admin_hltb_unavailable_row.html" %}
+      {% else %}
+      <p class="text-sm text-slate-500">Ninguno.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">
+      Emparejados con baja confianza
+      <span class="text-slate-600">({{ low_confidence_hltb|length }})</span>
+    </h2>
+    <p class="text-xs text-slate-500 mb-3">
+      Ya tienen una coincidencia guardada, pero con poca similitud de texto — a veces es solo una
+      cuestión de nombre (mayúsculas, "Edition", símbolos ®™) y el match es correcto; otras veces es
+      un juego completamente distinto que coló por encima del umbral automático. Revisa y confirma o
+      corrige cada uno.
+    </p>
+    <div class="space-y-2" id="low-confidence-hltb-list">
+      {% for game in low_confidence_hltb %}
+        {% include "partials/admin_hltb_low_confidence_row.html" %}
+      {% else %}
+      <p class="text-sm text-slate-500">Ninguno.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section>
+    <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">
+        Sin tags de SteamSpy
+        <span class="text-slate-600">({{ missing_steamspy|length }})</span>
+      </h2>
+      <div class="flex items-center gap-3">
+        <button
+          hx-post="/admin/steamspy/retry-all"
+          hx-target="#steamspy-retry-status"
+          hx-swap="outerHTML"
+          class="text-xs px-2.5 py-1.5 rounded border border-steam-line hover:border-steam-accent hover:text-steam-accent transition"
+        >
+          Reintentar todos automáticamente
+        </button>
+        <div id="steamspy-retry-status" class="text-sm"></div>
+      </div>
+    </div>
+    <p class="text-xs text-slate-500 mb-3">
+      Las reseñas ya se obtienen directamente de Steam (siempre al día). Los tags, en cambio, ahora se
+      obtienen de SteamSpy y, si no tiene nada (desde que Valve restringió su acceso a datos de propiedad
+      completos en 2018, algunos juegos — sobre todo los de perfil bajo o más nuevos — se quedan sin tags
+      ahí de forma permanente), se raspan directamente de la página de la tienda de Steam. "Reintentar
+      todos" vuelve a probar ambas fuentes para cada juego de esta lista.
+    </p>
+    <div
+      class="space-y-2"
+      id="missing-steamspy-list"
+      hx-get="/admin/steamspy/missing-list"
+      hx-trigger="steamspyListUpdated from:body"
+      hx-swap="innerHTML"
+    >
+      {% for game in missing_steamspy %}
+        {% include "partials/admin_steamspy_row.html" %}
+      {% else %}
+      <p class="text-sm text-slate-500">Ninguno.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+</div>
+{% endblock %}

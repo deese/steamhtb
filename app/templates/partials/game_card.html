@@ -1,0 +1,80 @@
+<div class="bg-steam-card rounded-lg overflow-hidden border border-steam-line hover:border-steam-accent/60 transition-colors group flex flex-col relative">
+  {% if not game.steam_details_synced_at %}
+  <span
+    class="absolute top-2 left-2 z-10 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-black/70 text-yellow-300 border border-yellow-700/50"
+    title="Todavía no se han descargado sus datos de Steam Store / SteamSpy / HowLongToBeat"
+  >
+    ⏳ pendiente de sincronizar
+  </span>
+  {% endif %}
+  <a href="{{ game.store_url }}" target="_blank" rel="noopener" class="block relative overflow-hidden">
+    <img
+      src="{{ game.header_image }}"
+      alt="{{ game.name }}"
+      loading="lazy"
+      class="w-full aspect-[460/215] object-cover group-hover:scale-105 transition-transform duration-300 bg-steam-panel"
+    />
+    <div class="absolute top-2 right-2 flex gap-1">
+      {% if game.metacritic_score %}
+      <span
+        class="text-xs font-bold px-1.5 py-0.5 rounded {{ 'bg-green-600' if game.metacritic_score >= 75 else ('bg-yellow-600' if game.metacritic_score >= 50 else 'bg-red-600') }} text-white"
+        title="Metacritic"
+      >
+        {{ game.metacritic_score }}
+      </span>
+      {% endif %}
+    </div>
+    {% if game.age_rating %}
+    <span
+      class="absolute top-2 left-2 text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/70 text-slate-100 border border-slate-500"
+      title="{{ game.age_rating_system }}"
+    >
+      {{ game.age_rating }}{% if game.age_rating_system == 'STEAM' %}+{% endif %}
+    </span>
+    {% endif %}
+    {% if game.is_family_shared %}
+    <span
+      class="absolute bottom-2 left-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-black/70 text-purple-300 border border-purple-700/50"
+      title="Disponible vía Family Sharing, no está en tu librería propia"
+    >
+      👪 Family
+    </span>
+    {% endif %}
+  </a>
+
+  <div class="p-3 flex flex-col flex-1">
+    <h3 class="font-semibold text-slate-100 truncate" title="{{ game.name }}">{{ game.name }}</h3>
+
+    <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400 mt-1.5">
+      <span title="Horas jugadas en Steam">🎮 {{ "%.0f"|format(game.playtime_minutes / 60) }}h jugadas</span>
+      {% if game.hltb_main %}
+      <span title="HowLongToBeat · historia principal">⏱ {{ "%.0f"|format(game.hltb_main) }}h historia</span>
+      {% if (game.playtime_minutes / 60) >= game.hltb_main %}
+      <span
+        class="text-steam-accent2"
+        title="Horas jugadas ≥ duración estimada de la historia principal — puede que te lo hayas pasado (no es seguro al 100%)"
+      >✅</span>
+      {% endif %}
+      {% elif game.hltb_unavailable %}
+      <span class="text-slate-600" title="Marcado manualmente como no disponible en HowLongToBeat">⏱ N/D en HLTB</span>
+      {% elif game.hltb_id %}
+      <span class="text-slate-600" title="Encontrado en HowLongToBeat como &quot;{{ game.hltb_title }}&quot;, pero sin tiempos enviados por la comunidad todavía">⏱ sin datos aún</span>
+      {% endif %}
+      {% if game.review_percent is not none %}
+      <span title="{{ game.review_positive }} positivas / {{ game.review_negative }} negativas">
+        👍 {{ game.review_percent }}% ({{ ((game.review_positive or 0) + (game.review_negative or 0))|format_count }})
+      </span>
+      {% endif %}
+    </div>
+
+    {% if game.tags %}
+    <div class="flex flex-wrap gap-1 mt-2">
+      {% for tag in game.tags[:4] %}
+      <span class="text-[10px] bg-steam-panel text-steam-accent px-1.5 py-0.5 rounded">{{ tag.name }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="mt-auto"></div>
+  </div>
+</div>

@@ -1,0 +1,31 @@
+{% if candidates %}
+{% for c in candidates %}
+<div class="flex items-center justify-between gap-3 text-xs bg-steam-bg border border-steam-line rounded px-2.5 py-2">
+  <div class="min-w-0">
+    <p class="text-slate-200 truncate">
+      {{ c.game_name }}
+      <span class="text-slate-500">({{ (c.similarity * 100)|round(0)|int }}% similar)</span>
+    </p>
+    <p class="text-slate-500 mt-0.5">
+      Historia: {{ "%.0f"|format(c.main_story) if c.main_story else "?" }}h ·
+      +Extras: {{ "%.0f"|format(c.main_extra) if c.main_extra else "?" }}h ·
+      Completista: {{ "%.0f"|format(c.completionist) if c.completionist else "?" }}h
+    </p>
+  </div>
+  <form hx-post="/admin/hltb/assign" hx-target="#hltb-row-{{ appid }}" hx-swap="delete" class="shrink-0">
+    <input type="hidden" name="appid" value="{{ appid }}" />
+    <input type="hidden" name="hltb_id" value="{{ c.game_id }}" />
+    <input type="hidden" name="hltb_title" value="{{ c.game_name }}" />
+    <input type="hidden" name="hltb_main" value="{{ c.main_story if c.main_story else '' }}" />
+    <input type="hidden" name="hltb_main_extra" value="{{ c.main_extra if c.main_extra else '' }}" />
+    <input type="hidden" name="hltb_completionist" value="{{ c.completionist if c.completionist else '' }}" />
+    <input type="hidden" name="hltb_similarity" value="{{ c.similarity }}" />
+    <button type="submit" class="text-xs px-2.5 py-1 rounded bg-steam-accent text-slate-900 font-medium hover:brightness-110">
+      Usar
+    </button>
+  </form>
+</div>
+{% endfor %}
+{% else %}
+<p class="text-xs text-slate-500">Sin resultados. Prueba con otro título.</p>
+{% endif %}

@@ -1,0 +1,5 @@
+{% for game in missing_steamspy %}
+  {% include "partials/admin_steamspy_row.html" %}
+{% else %}
+<p class="text-sm text-slate-500">Todo mapeado 🎉</p>
+{% endfor %}

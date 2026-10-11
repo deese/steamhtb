@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Steamguess · Ruleta de tu backlog{% endblock %}
+
+{% block content %}
+<style>
+  .sg-grid { display: grid; gap: 10px; }
+  .sg-card {
+    position: relative;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    background: #16202d;
+    aspect-ratio: 2 / 3;
+    border: 1px solid #24344a;
+    display: block;
+    text-decoration: none;
+    transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+  }
+  .sg-card:hover { transform: scale(1.03); box-shadow: 0 10px 30px rgba(0,0,0,.6); border-color: #66c0f4; z-index: 10; }
+  .sg-card.has-video { overflow: visible; }
+  .sg-cover { width: 100%; height: 100%; object-fit: cover; display: block; background: #0f1621; }
+  .sg-info {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 26px 8px 8px;
+    background: linear-gradient(to top, rgba(0,0,0,.92) 0%, transparent 100%);
+    transform: translateY(101%); transition: transform .18s ease; pointer-events: none; z-index: 2;
+  }
+  .sg-card:hover .sg-info { transform: translateY(0); }
+  .sg-name { font-size: 11px; font-weight: 700; color: #fff; line-height: 1.25; margin-bottom: 2px; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+  .sg-hours { font-size: 10px; color: #9ca3af; }
+  .sg-popup {
+    position: absolute; left: -20%; width: 140%; top: 50%; transform: translateY(-50%);
+    z-index: 30; border-radius: 6px; overflow: hidden; background: #0f1621;
+    box-shadow: 0 20px 60px rgba(0,0,0,.95), 0 0 0 1px rgba(102,192,244,.25);
+    animation: sg-popup-in .15s ease;
+  }
+  @keyframes sg-popup-in { from { opacity:0; transform: translateY(-50%) scale(.97);} to { opacity:1; transform: translateY(-50%) scale(1);} }
+  .sg-badge {
+    position: absolute; top: 6px; right: 6px; z-index: 5; display:flex; align-items:center; gap:4px;
+    background: rgba(0,0,0,.6); backdrop-filter: blur(4px); border-radius: 3px; padding: 2px 6px;
+    font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; pointer-events: none;
+  }
+  .sg-badge.micro { color: #66c0f4; }
+  .sg-badge.trailer { color: #a0a0a0; }
+  .sg-no-trailer { width: 100%; aspect-ratio: 16/9; background-size: cover; background-position: center; display:flex; align-items:center; justify-content:center; position: relative; }
+  .sg-no-trailer::after { content:''; position:absolute; inset:0; background: rgba(0,0,0,.55); }
+  .sg-no-trailer-label { position: relative; z-index:1; font-size: 11px; font-weight: 600; color: rgba(255,255,255,.5); letter-spacing: .8px; text-transform: uppercase; border: 1px solid rgba(255,255,255,.2); padding: 4px 10px; border-radius: 3px; }
+  .sg-popup video { width: 100%; display: block; aspect-ratio: 16/9; object-fit: cover; }
+  .sg-popup-meta { padding: 8px 12px 10px; background: #0f1621; display:flex; flex-direction: column; gap: 5px; }
+  .sg-popup-title { font-size: 12px; font-weight: 700; color: #fff; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sg-popup-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .sg-metacritic { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px; color: #fff; }
+  .sg-metacritic--great { background: #16a34a; }
+  .sg-metacritic--ok { background: #ca8a04; }
+  .sg-metacritic--bad { background: #c44e2c; }
+  .sg-hltb { font-size: 10px; color: #9ca3af; }
+  .sg-popup-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .sg-popup-tag { font-size: 10px; color: #9ca3af; background: #1b2838; border: 1px solid #24344a; border-radius: 2px; padding: 2px 6px; white-space: nowrap; }
+  .sg-popup-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .sg-review { font-size: 10px; font-weight: 600; }
+  .sg-review--great, .sg-review--good, .sg-review--ok { color: #66c0f4; }
+  .sg-review--mixed { color: #e8832a; }
+  .sg-review--bad { color: #c44e2c; }
+  .sg-release { font-size: 10px; color: #9ca3af; white-space: nowrap; margin-left: auto; }
+  .sg-genre-section { margin-bottom: 28px; }
+  .sg-genre-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .sg-genre-title { font-size: 14px; font-weight: 700; color: #e2e8f0; white-space: nowrap; }
+  .sg-genre-line { flex: 1; height: 1px; background: #24344a; }
+  .sg-genre-badge { font-size: 11px; color: #9ca3af; background: #1b2838; border: 1px solid #24344a; border-radius: 10px; padding: 1px 8px; }
+</style>
+
+<div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
+
+  <header class="flex flex-col gap-4 mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-white tracking-tight">Steamguess</h1>
+        <p class="text-sm text-slate-400 mt-0.5">Ruleta de tu backlog: tira y descubre qué jugar de lo que apenas has tocado.</p>
+      </div>
+      <a href="/" class="text-sm text-steam-accent hover:underline">← Volver a la librería</a>
+    </div>
+
+    <div class="flex flex-wrap items-end gap-3 bg-steam-panel/60 border border-steam-line rounded-lg p-4">
+      <div>
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-400 block mb-1">Juegos</label>
+        <input id="sg-count" type="number" min="5" max="100" step="5" value="20"
+          class="w-20 bg-steam-bg border border-steam-line rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent" />
+      </div>
+      <div>
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-400 block mb-1">Columnas</label>
+        <input id="sg-cols" type="number" min="2" max="8" value="5"
+          class="w-16 bg-steam-bg border border-steam-line rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent" />
+      </div>
+      <div>
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-400 block mb-1">Horas jugadas max.</label>
+        <input id="sg-maxhours" type="number" min="0" max="500" step="0.5" value="5"
+          class="w-20 bg-steam-bg border border-steam-line rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent" />
+      </div>
+
+      <div class="flex-1 min-w-[220px]" id="sg-genre-picker">
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-400 block mb-1">Géneros</label>
+        <div class="flex flex-wrap gap-1 mb-1" id="sg-genre-chips"></div>
+        <input id="sg-genre-search" type="text" placeholder="Filtrar por género…" autocomplete="off"
+          class="w-full bg-steam-bg border border-steam-line rounded px-2 py-1.5 text-sm mb-1 focus:outline-none focus:ring-1 focus:ring-steam-accent" />
+        <div id="sg-genre-list" class="max-h-40 overflow-y-auto bg-steam-bg border border-steam-line rounded p-1 space-y-0.5"></div>
+      </div>
+
+      <div class="flex-1 min-w-[220px]" id="sg-tag-picker">
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-400 block mb-1">Tags</label>
+        <div class="flex flex-wrap gap-1 mb-1" id="sg-tag-chips"></div>
+        <input id="sg-tag-search" type="text" placeholder="Filtrar por tag…" autocomplete="off"
+          class="w-full bg-steam-bg border border-steam-line rounded px-2 py-1.5 text-sm mb-1 focus:outline-none focus:ring-1 focus:ring-steam-accent" />
+        <div id="sg-tag-list" class="max-h-40 overflow-y-auto bg-steam-bg border border-steam-line rounded p-1 space-y-0.5"></div>
+      </div>
+
+      <div class="flex-1 min-w-[220px]" id="sg-rating-picker">
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-400 block mb-1">Reseñas</label>
+        <div class="flex flex-wrap gap-1 mb-1" id="sg-rating-chips"></div>
+        <input id="sg-rating-search" type="text" placeholder="Filtrar por reseña…" autocomplete="off"
+          class="w-full bg-steam-bg border border-steam-line rounded px-2 py-1.5 text-sm mb-1 focus:outline-none focus:ring-1 focus:ring-steam-accent" />
+        <div id="sg-rating-list" class="max-h-40 overflow-y-auto bg-steam-bg border border-steam-line rounded p-1 space-y-0.5"></div>
+      </div>
+
+      <div class="flex-1 min-w-[220px]" id="sg-duration-picker">
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-400 block mb-1">Duración (HLTB)</label>
+        <div class="flex flex-wrap gap-1 mb-1" id="sg-duration-chips"></div>
+        <input id="sg-duration-search" type="text" placeholder="Filtrar por duración…" autocomplete="off"
+          class="w-full bg-steam-bg border border-steam-line rounded px-2 py-1.5 text-sm mb-1 focus:outline-none focus:ring-1 focus:ring-steam-accent" />
+        <div id="sg-duration-list" class="max-h-40 overflow-y-auto bg-steam-bg border border-steam-line rounded p-1 space-y-0.5"></div>
+      </div>
+
+      <button id="sg-roll-btn" class="px-4 py-1.5 text-sm font-medium rounded bg-steam-accent text-slate-900 hover:brightness-110 transition">
+        🎲 Tirar
+      </button>
+    </div>
+  </header>
+
+  <main id="sg-app">
+    <div class="text-center py-24 text-slate-500">Cargando…</div>
+  </main>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+<script src="/static/js/steamguess.js"></script>
+{% endblock %}

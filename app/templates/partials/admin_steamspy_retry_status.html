@@ -1,0 +1,29 @@
+<div
+  id="steamspy-retry-status"
+  {% if retry_status.state == "running" %}hx-get="/admin/steamspy/retry-all/status" hx-trigger="every 1.5s" hx-swap="outerHTML"{% endif %}
+  class="text-sm"
+>
+  {% if retry_status.state == "running" %}
+    <div class="w-64">
+      <div class="flex justify-between text-xs mb-1 text-slate-300">
+        <span>Reintentando…</span>
+        <span>{{ retry_status.processed }}/{{ retry_status.total }} · {{ retry_status.matched }} con tags</span>
+      </div>
+      <div class="h-2 bg-steam-panel rounded overflow-hidden border border-steam-line">
+        <div
+          class="h-full bg-steam-accent transition-all duration-300"
+          style="width: {{ (retry_status.processed / retry_status.total * 100) if retry_status.total else 4 }}%"
+        ></div>
+      </div>
+      {% if retry_status.current %}
+      <div class="text-[11px] text-slate-500 mt-1 truncate max-w-64">{{ retry_status.current }}</div>
+      {% endif %}
+    </div>
+  {% elif retry_status.state == "done" %}
+    <span class="text-steam-accent2">
+      ✓ Listo: {{ retry_status.matched }} de {{ retry_status.processed }} ahora con tags
+    </span>
+  {% elif retry_status.state == "error" %}
+    <span class="text-red-400">Error: {{ retry_status.errors[0] if retry_status.errors else "desconocido" }}</span>
+  {% endif %}
+</div>

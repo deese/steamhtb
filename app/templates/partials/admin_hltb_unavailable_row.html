@@ -1,0 +1,16 @@
+<div id="hltb-unavail-row-{{ game.appid }}" class="bg-steam-panel/50 border border-steam-line rounded-lg p-3 flex items-center gap-3">
+  <img src="{{ game.header_image }}" alt="" loading="lazy" class="w-20 aspect-[460/215] object-cover rounded bg-steam-bg shrink-0" />
+  <div class="flex-1 min-w-0">
+    <p class="font-medium text-slate-100 truncate">{{ game.name }}</p>
+    <p class="text-xs text-slate-500">{{ "%.0f"|format(game.playtime_minutes / 60) }}h jugadas en Steam</p>
+  </div>
+  <button
+    hx-post="/admin/hltb/unavailable"
+    hx-vals='{"appid": {{ game.appid }}, "value": "false"}'
+    hx-target="#hltb-unavail-row-{{ game.appid }}"
+    hx-swap="delete"
+    class="text-xs px-2 py-1.5 rounded border border-steam-line hover:border-steam-accent hover:text-steam-accent transition shrink-0"
+  >
+    Revisar de nuevo
+  </button>
+</div>

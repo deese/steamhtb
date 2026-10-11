@@ -1,0 +1,22 @@
+<div id="steamspy-row-{{ game.appid }}" class="bg-steam-panel/50 border border-steam-line rounded-lg p-3 flex items-center gap-3">
+  <img src="{{ game.header_image }}" alt="" loading="lazy" class="w-20 aspect-[460/215] object-cover rounded bg-steam-bg shrink-0" />
+  <div class="flex-1 min-w-0">
+    <p class="font-medium text-slate-100 truncate">{{ game.name }}</p>
+    {% if game.tags %}
+    <p class="text-xs text-steam-accent2">✓ Ya tiene tags ({{ game.tags|length }})</p>
+    {% else %}
+    <p class="text-xs text-slate-500">Sin tags todavía en SteamSpy.</p>
+    {% endif %}
+  </div>
+  <button
+    hx-post="/admin/steamspy/retry"
+    hx-vals='{"appid": {{ game.appid }}}'
+    hx-target="#steamspy-row-{{ game.appid }}"
+    hx-swap="outerHTML"
+    hx-indicator="#steamspy-loading-{{ game.appid }}"
+    class="text-xs px-2.5 py-1.5 rounded border border-steam-line hover:border-steam-accent hover:text-steam-accent transition shrink-0"
+  >
+    <span id="steamspy-loading-{{ game.appid }}" class="htmx-indicator">…</span>
+    Reintentar
+  </button>
+</div>

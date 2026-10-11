@@ -1,0 +1,9 @@
+{% if games %}
+<div class="space-y-2">
+  {% for game in games %}
+    {% include "partials/admin_hltb_search_row.html" %}
+  {% endfor %}
+</div>
+{% elif queried %}
+<p class="text-sm text-slate-500">Ningún juego de tu librería coincide con esa búsqueda.</p>
+{% endif %}

@@ -1,0 +1,30 @@
+<div
+  {% if status.state == "running" %}hx-get="/sync/status" hx-trigger="every 1.5s" hx-swap="outerHTML"{% endif %}
+  class="text-sm min-w-[180px]"
+>
+  {% if status.state == "running" %}
+    <div class="w-56">
+      <div class="flex justify-between text-xs mb-1 text-slate-300">
+        <span>Sincronizando…</span>
+        <span>{{ status.processed }}/{{ status.total }}</span>
+      </div>
+      <div class="h-2 bg-steam-panel rounded overflow-hidden border border-steam-line">
+        <div
+          class="h-full bg-steam-accent transition-all duration-300"
+          style="width: {{ (status.processed / status.total * 100) if status.total else 4 }}%"
+        ></div>
+      </div>
+      {% if status.current %}
+      <div class="text-[11px] text-slate-500 mt-1 truncate max-w-56">{{ status.current }}</div>
+      {% endif %}
+    </div>
+  {% elif status.state == "done" %}
+    <span class="text-steam-accent2">
+      ✓ Sincronización completa ({{ status.processed }} juegos actualizados{% if status.errors %}, {{ status.errors|length }} avisos{% endif %})
+    </span>
+  {% elif status.state == "error" %}
+    <span class="text-red-400">Error: {{ status.errors[0] if status.errors else "desconocido" }}</span>
+  {% else %}
+    <span class="text-slate-500">Sin sincronizar todavía</span>
+  {% endif %}
+</div>

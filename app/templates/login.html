@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Login · Steam × HowLongToBeat{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4">
+  <form method="post" action="/login" class="w-full max-w-xs bg-steam-panel/60 border border-steam-line rounded-lg p-6 space-y-4">
+    <h1 class="text-lg font-bold text-white text-center">🔒 Steam × HowLongToBeat</h1>
+
+    {% if error %}
+    <p class="text-sm text-red-400 text-center">{{ error }}</p>
+    {% endif %}
+
+    <input type="hidden" name="next" value="{{ next }}" />
+    <div>
+      <label class="text-xs font-semibold uppercase tracking-wide text-slate-400 block mb-1">Contraseña</label>
+      <input
+        type="password"
+        name="password"
+        autofocus
+        class="w-full bg-steam-bg border border-steam-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent"
+      />
+    </div>
+
+    <button type="submit" class="w-full px-3 py-2 text-sm font-medium rounded bg-steam-accent text-slate-900 hover:brightness-110 transition">
+      Entrar
+    </button>
+  </form>
+</div>
+{% endblock %}

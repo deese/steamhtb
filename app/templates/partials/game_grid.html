@@ -1,0 +1,13 @@
+{% if games %}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  {% for game in games %}
+    {% include "partials/game_card.html" %}
+  {% endfor %}
+</div>
+<p class="text-xs text-slate-500 mt-4">{{ games|length }} juego{{ "s" if games|length != 1 else "" }}</p>
+{% else %}
+<div class="text-center py-24 text-slate-500 border border-dashed border-steam-line rounded-lg">
+  <p class="text-lg">No se encontraron juegos con esos filtros.</p>
+  <p class="text-sm mt-1">Prueba a quitar algún filtro, o sincroniza tu librería si aún no lo has hecho.</p>
+</div>
+{% endif %}

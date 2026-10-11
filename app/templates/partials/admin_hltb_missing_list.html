@@ -1,0 +1,5 @@
+{% for game in missing_hltb %}
+  {% include "partials/admin_hltb_unmatched_row.html" %}
+{% else %}
+<p class="text-sm text-slate-500">Todo mapeado 🎉</p>
+{% endfor %}

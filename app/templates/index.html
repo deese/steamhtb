@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
+
+  <header class="flex flex-col gap-4 mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-white tracking-tight">
+          Steam <span class="text-steam-accent">×</span> HowLongToBeat
+        </h1>
+        <p class="text-sm text-slate-400 mt-0.5">
+          {{ stats.synced_games }}/{{ stats.total_games }} juegos con datos completos
+          {% if stats.last_sync %}· última sincronización {{ stats.last_sync.strftime("%d/%m/%Y %H:%M") }}{% endif %}
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3 flex-wrap">
+        <a
+          href="/steamguess"
+          class="px-3 py-1.5 text-sm font-medium rounded border border-steam-line text-slate-300 hover:border-steam-accent hover:text-steam-accent transition"
+        >
+          🎲 Steamguess
+        </a>
+        <a
+          href="/admin"
+          class="px-3 py-1.5 text-sm font-medium rounded border border-steam-line text-slate-300 hover:border-steam-accent hover:text-steam-accent transition inline-flex items-center gap-1.5"
+        >
+          Admin
+          {% if admin_pending %}
+          <span class="text-[10px] font-bold bg-yellow-600 text-white rounded-full px-1.5 py-0.5">{{ admin_pending }}</span>
+          {% endif %}
+        </a>
+        <button
+          hx-post="/sync"
+          hx-target="#sync-status"
+          hx-swap="innerHTML"
+          {% if not configured %}disabled{% endif %}
+          class="px-3 py-1.5 text-sm font-medium rounded bg-steam-accent text-slate-900 hover:brightness-110 transition disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Sincronizar nuevos
+        </button>
+        <button
+          hx-post="/sync?force=true"
+          hx-target="#sync-status"
+          hx-swap="innerHTML"
+          hx-confirm="Esto va a re-descargar los datos de TODA tu librería (Steam, SteamSpy y HowLongToBeat) y puede tardar varios minutos. ¿Continuar?"
+          {% if not configured %}disabled{% endif %}
+          class="px-3 py-1.5 text-sm font-medium rounded border border-steam-line text-slate-300 hover:border-steam-accent hover:text-steam-accent transition disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Resincronizar todo
+        </button>
+        <div id="sync-status">
+          {% include "partials/sync_status.html" %}
+        </div>
+      </div>
+    </div>
+
+    {% if not configured %}
+    <div class="rounded border border-yellow-700/50 bg-yellow-900/20 text-yellow-200 text-sm px-4 py-3">
+      Falta configurar <code class="text-yellow-100">STEAM_API_KEY</code> y <code class="text-yellow-100">STEAM_ID</code> en el archivo <code class="text-yellow-100">.env</code>.
+      Copia <code class="text-yellow-100">.env.example</code>, rellénalo y reinicia el servidor.
+    </div>
+    {% endif %}
+  </header>
+
+  <div class="flex flex-col lg:flex-row gap-6">
+
+    <aside class="lg:w-72 shrink-0">
+      <form
+        id="filters"
+        hx-get="/games"
+        hx-target="#game-grid"
+        hx-swap="innerHTML"
+        hx-trigger="input changed delay:400ms from:#q, change"
+        hx-indicator="#grid-loading"
+        class="lg:sticky lg:top-6 space-y-5 bg-steam-panel/60 border border-steam-line rounded-lg p-4"
+      >
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Buscar</label>
+          <input
+            type="text"
+            id="q"
+            name="q"
+            placeholder="Nombre del juego..."
+            class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent"
+          />
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Duración (HowLongToBeat)</label>
+          <select name="bucket" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
+            <option value="any">Cualquier duración</option>
+            <option value="lt8">Menos de 8h</option>
+            <option value="8-15">8h – 15h</option>
+            <option value="15-30">15h – 30h</option>
+            <option value="30-50">30h – 50h</option>
+            <option value="50plus">Más de 50h</option>
+            <option value="nodata">Sin datos de duración</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Clasificación por edad</label>
+          <select name="age" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
+            <option value="any">Cualquier edad</option>
+            <option value="0-3">Para todos los públicos</option>
+            <option value="7">+7</option>
+            <option value="12">+12</option>
+            <option value="16">+16</option>
+            <option value="18">+18</option>
+            <option value="unrated">Sin clasificar</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">¿Me lo he pasado?</label>
+          <select name="beaten" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
+            <option value="any">Cualquiera</option>
+            <option value="yes">✅ Horas jugadas ≥ duración historia</option>
+            <option value="no">Aún no (según HLTB)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Origen</label>
+          <select name="family" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
+            <option value="any">Cualquiera</option>
+            <option value="owned">Solo mi librería</option>
+            <option value="family">Solo Family Sharing</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Ordenar por</label>
+          <select name="sort" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
+            <option value="name_asc">Nombre (A-Z)</option>
+            <option value="playtime_desc">Horas jugadas (Steam)</option>
+            <option value="hltb_asc">Duración (menor primero)</option>
+            <option value="hltb_desc">Duración (mayor primero)</option>
+            <option value="metacritic_desc">Nota Metacritic</option>
+            <option value="reviews_desc">% de reseñas positivas</option>
+          </select>
+        </div>
+
+        <div x-data="{ tagFilter: '' }">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Tags</label>
+            <button
+              type="button"
+              @click="$el.closest('form').querySelectorAll('input[name=tags]:checked').forEach(i => i.checked = false); htmx.trigger('#filters', 'change')"
+              class="text-[11px] text-steam-accent hover:underline"
+            >
+              limpiar
+            </button>
+          </div>
+          <input
+            type="text"
+            x-model="tagFilter"
+            placeholder="Filtrar tags..."
+            class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-steam-accent"
+          />
+          <div class="mt-2 max-h-72 overflow-y-auto space-y-1 pr-1">
+            {% for tag_name, count in tags %}
+            <label
+              x-show="tagFilter === '' || '{{ tag_name|lower|replace("'", "") }}'.includes(tagFilter.toLowerCase())"
+              class="flex items-center justify-between gap-2 text-sm text-slate-300 hover:text-white cursor-pointer py-0.5"
+            >
+              <span class="flex items-center gap-2 truncate">
+                <input type="checkbox" name="tags" value="{{ tag_name }}" class="rounded border-steam-line bg-steam-bg text-steam-accent focus:ring-steam-accent" />
+                <span class="truncate">{{ tag_name }}</span>
+              </span>
+              <span class="text-[11px] text-slate-500">{{ count }}</span>
+            </label>
+            {% else %}
+            <p class="text-xs text-slate-500">Sincroniza tu librería para ver tags.</p>
+            {% endfor %}
+          </div>
+        </div>
+      </form>
+    </aside>
+
+    <main class="flex-1 min-w-0">
+      <div id="grid-loading" class="htmx-indicator text-sm text-steam-accent mb-3">Cargando…</div>
+      <div
+        id="game-grid"
+        hx-get="/games"
+        hx-trigger="gamesUpdated from:body"
+        hx-include="#filters"
+        hx-swap="innerHTML"
+      >
+        {% include "partials/game_grid.html" %}
+      </div>
+    </main>
+
+  </div>
+</div>
+{% endblock %}
