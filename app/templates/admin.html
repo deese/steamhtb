@@ -34,29 +34,6 @@
   </section>
 
   <section class="mb-10">
-    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">Family Sharing</h2>
-    <p class="text-xs text-slate-500 mb-3">
-      Sube tu <code class="text-slate-400">localconfig.vdf</code> (normalmente en
-      <code class="text-slate-400">Steam/userdata/&lt;tu_id&gt;/config/localconfig.vdf</code> en el
-      equipo donde juegas) para añadir los juegos a los que tienes acceso por Family Sharing — esos
-      nunca aparecen en tu librería propia porque Steam no los expone por API. Puedes volver a subir
-      el fichero cuando quieras para añadir los que falten; lo que ya tengas no se toca.
-    </p>
-    <form hx-post="/admin/family/upload" hx-target="#family-upload-result" hx-swap="innerHTML" hx-encoding="multipart/form-data" class="flex items-center gap-3">
-      <input
-        type="file"
-        name="file"
-        required
-        class="text-xs text-slate-400 file:mr-3 file:px-2.5 file:py-1.5 file:rounded file:border file:border-steam-line file:bg-steam-bg file:text-slate-200 file:text-xs hover:file:border-steam-accent"
-      />
-      <button type="submit" class="text-xs px-2.5 py-1.5 rounded bg-steam-accent text-slate-900 font-medium hover:brightness-110 transition shrink-0">
-        Subir
-      </button>
-    </form>
-    <div id="family-upload-result" class="mt-2"></div>
-  </section>
-
-  <section class="mb-10">
     <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
       <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">
         Sin coincidencia en HowLongToBeat

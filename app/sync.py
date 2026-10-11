@@ -169,10 +169,6 @@ def apply_enrichment(session: Session, game: Game, data: dict, tag_cache: dict[s
 
     details = data["details"]
     if details:
-        # Games added via the Family Sharing upload start out with a
-        # placeholder "App <appid>" name (they don't come from
-        # GetOwnedGames, which is where every other game's real name comes
-        # from) — this is what fills in the real one once enrichment runs.
         game.name = details.get("name") or game.name
         game.header_image = details.get("header_image") or game.header_image
         genres = details.get("genres") or []
@@ -301,10 +297,6 @@ async def run_sync(force: bool = False) -> None:
                         game = Game(appid=appid, name=entry.get("name", f"App {appid}"))
                     game.name = entry.get("name", game.name)
                     game.playtime_minutes = entry.get("playtime_forever", 0)
-                    # GetOwnedGames is authoritative proof of direct ownership —
-                    # always wins over a prior Family Sharing flag (e.g. you
-                    # bought a game you used to only borrow).
-                    game.is_family_shared = False
                     if not game.header_image:
                         game.header_image = (
                             f"https://cdn.akamai.steamstatic.com/steam/apps/{appid}/header.jpg"
@@ -322,21 +314,6 @@ async def run_sync(force: bool = False) -> None:
                         for entry in owned
                         if session.get(Game, entry["appid"]).steam_details_synced_at is None
                     ]
-
-                # Family Sharing games (added via the /admin upload) never
-                # come back from GetOwnedGames, so the loop above never sees
-                # them — without this they'd sit untouched forever instead of
-                # picking up real data on the next "Sincronizar nuevos".
-                owned_appids = {entry["appid"] for entry in owned}
-                family_query = select(Game).where(Game.is_family_shared == True)  # noqa: E712
-                if not force:
-                    family_query = family_query.where(Game.steam_details_synced_at.is_(None))
-                family_games = session.exec(family_query).all()
-                targets.extend(
-                    {"appid": g.appid, "name": g.name}
-                    for g in family_games
-                    if g.appid not in owned_appids
-                )
 
                 skip_hltb_by_appid = {
                     entry["appid"]: bool(session.get(Game, entry["appid"]).hltb_manual_override)

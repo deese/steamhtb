@@ -21,7 +21,6 @@ _GAME_COLUMN_MIGRATIONS = {
     "steam_type": "VARCHAR",
     "trailer_url": "VARCHAR",
     "trailer_checked_at": "DATETIME",
-    "is_family_shared": "BOOLEAN NOT NULL DEFAULT 0",
 }
 
 

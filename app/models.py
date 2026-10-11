@@ -23,12 +23,6 @@ class Game(SQLModel, table=True):
     playtime_minutes: int = 0
     header_image: Optional[str] = None
     store_url: Optional[str] = None
-    # True for games found in an uploaded Steam localconfig.vdf that aren't
-    # in your own GetOwnedGames response — i.e. played via Family Sharing,
-    # not owned outright. Everything else (enrichment, filters, steamguess)
-    # treats these exactly like any other game once the name/details fill in
-    # through the normal sync.
-    is_family_shared: bool = False
 
     genres: Optional[str] = None
     is_free: bool = False

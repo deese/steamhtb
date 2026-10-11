@@ -36,7 +36,6 @@ def get_filtered_games(
     bucket: str = "any",
     age: str = "any",
     beaten: str = "any",
-    family: str = "any",
     sort: str = "name_asc",
 ) -> list[Game]:
     stmt = select(Game)
@@ -85,11 +84,6 @@ def get_filtered_games(
         stmt = stmt.where(Game.hltb_main > 0)
         played_hours = Game.playtime_minutes / 60.0
         stmt = stmt.where(played_hours >= Game.hltb_main if beaten == "yes" else played_hours < Game.hltb_main)
-
-    if family == "owned":
-        stmt = stmt.where(Game.is_family_shared == False)  # noqa: E712
-    elif family == "family":
-        stmt = stmt.where(Game.is_family_shared == True)  # noqa: E712
 
     column, direction = SORT_OPTIONS.get(sort, SORT_OPTIONS["name_asc"])
     order = column.desc() if direction == "desc" else column.asc()

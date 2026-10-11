@@ -11,18 +11,14 @@ Tailwind (no Node build step).
 ## Features
 
 - **Library browser**: filter by name, tags (AND logic — multi-select),
-  HowLongToBeat duration bucket, age rating, whether you've likely beaten a
-  game (playtime ≥ estimated main story length), and library origin (your own
-  library vs. Family Sharing).
+  HowLongToBeat duration bucket, age rating, and whether you've likely beaten
+  a game (playtime ≥ estimated main story length).
 - **Steamguess**: a backlog-roulette page that picks a random game for you
   from filtered criteria (genre, age rating, duration, tags), with trailer
   previews on hover.
 - **Admin page**: review and fix HowLongToBeat matches — search for a game and
   re-run the match, review low-confidence auto-matches, mark a game as
   unavailable on HLTB, and retry SteamSpy tag fetches in bulk.
-- **Family Sharing import**: upload your Steam client's local `localconfig.vdf`
-  to pull in games shared with you that aren't in your own library (there's no
-  public Web API for Family Sharing, so this is a manual, periodic import).
 - **Optional login gate**: a lightweight cookie-based password gate for when
   the app is reachable beyond a trusted network, with a long-lived session so
   you're not re-entering a password constantly.
@@ -139,7 +135,7 @@ app/
   sync.py                sync orchestration (concurrent fetch, serialized
                          DB writes, live progress)
   ratelimit.py           simple rate limiter for external APIs
-  admin.py               admin routes (HLTB review, Family Sharing import)
+  admin.py               admin routes (HLTB review)
   steamguess.py          backlog-roulette feature
   templates/             Jinja2 + HTMX partials
 data/

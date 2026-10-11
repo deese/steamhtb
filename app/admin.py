@@ -1,8 +1,7 @@
 from datetime import datetime, timezone
 
 import httpx
-import vdf
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
@@ -253,91 +252,3 @@ async def admin_steamspy_retry(
     return templates.TemplateResponse(request, "partials/admin_steamspy_row.html", {"game": game})
 
 
-def _extract_apps_section(parsed: dict) -> dict | None:
-    """Steam's localconfig.vdf nests the per-app data a few levels down, and
-    capitalization has shifted across Steam client versions — walk case-
-    insensitively instead of hardcoding one exact path."""
-    node = parsed
-    for key in ("UserLocalConfigStore", "Software", "Valve", "Steam", "apps"):
-        if not isinstance(node, dict):
-            return None
-        match = next((v for k, v in node.items() if k.lower() == key.lower()), None)
-        if match is None:
-            return None
-        node = match
-    return node if isinstance(node, dict) else None
-
-
-@router.post("/family/upload", response_class=HTMLResponse)
-async def admin_family_upload(file: UploadFile, session: Session = Depends(get_session)):
-    """Add any appid found in an uploaded Steam `localconfig.vdf` that isn't
-    already in the library — Family Sharing games never show up in
-    GetOwnedGames, but the Steam client tracks them locally since it needs
-    per-app data (playtime, last played...) for anything you can launch,
-    owned or borrowed. New rows start with a placeholder name; the next
-    "Sincronizar nuevos" fills in the real name/tags/HLTB match like any
-    other game (see run_sync / apply_enrichment)."""
-    raw = await file.read()
-    try:
-        parsed = vdf.loads(raw.decode("utf-8", errors="ignore"))
-    except Exception as exc:
-        return HTMLResponse(
-            f'<p class="text-sm text-red-400">No se pudo leer el fichero como VDF: {exc}</p>'
-        )
-
-    apps = _extract_apps_section(parsed)
-    if not apps:
-        return HTMLResponse(
-            '<p class="text-sm text-red-400">No se encontró la sección de apps esperada — '
-            "¿es el localconfig.vdf correcto?</p>"
-        )
-
-    existing_appids = set(session.exec(select(Game.appid)).all())
-    now = datetime.now(timezone.utc)
-    added = 0
-    already_had = 0
-    skipped = 0
-
-    for appid_str, info in apps.items():
-        try:
-            appid = int(appid_str)
-        except ValueError:
-            skipped += 1
-            continue
-        if appid in existing_appids:
-            already_had += 1
-            continue
-
-        playtime_minutes = 0
-        if isinstance(info, dict):
-            for key in ("Playtime", "playtime"):
-                if key in info:
-                    try:
-                        playtime_minutes = int(info[key])
-                    except (TypeError, ValueError):
-                        playtime_minutes = 0
-                    break
-
-        session.add(
-            Game(
-                appid=appid,
-                name=f"App {appid}",
-                playtime_minutes=playtime_minutes,
-                is_family_shared=True,
-                header_image=f"https://cdn.akamai.steamstatic.com/steam/apps/{appid}/header.jpg",
-                store_url=f"https://store.steampowered.com/app/{appid}",
-                owned_synced_at=now,
-            )
-        )
-        existing_appids.add(appid)
-        added += 1
-
-    async with sync.db_write_lock:
-        session.commit()
-
-    return HTMLResponse(
-        f'<p class="text-sm text-steam-accent2">'
-        f"✓ {added} juegos nuevos de Family Sharing añadidos "
-        f"({already_had} ya estaban, {skipped} entradas ignoradas). "
-        f'Dale a "Sincronizar nuevos" en la librería para rellenar sus datos.</p>'
-    )

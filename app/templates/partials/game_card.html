@@ -32,14 +32,6 @@
       {{ game.age_rating }}{% if game.age_rating_system == 'STEAM' %}+{% endif %}
     </span>
     {% endif %}
-    {% if game.is_family_shared %}
-    <span
-      class="absolute bottom-2 left-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-black/70 text-purple-300 border border-purple-700/50"
-      title="Disponible vía Family Sharing, no está en tu librería propia"
-    >
-      👪 Family
-    </span>
-    {% endif %}
   </a>
 
   <div class="p-3 flex flex-col flex-1">

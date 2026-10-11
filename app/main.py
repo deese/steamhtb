@@ -106,12 +106,11 @@ async def games_partial(
     bucket: str = "any",
     age: str = "any",
     beaten: str = "any",
-    family: str = "any",
     sort: str = "name_asc",
     session: Session = Depends(get_session),
 ):
     games = get_filtered_games(
-        session, q=q, tag_names=tags, bucket=bucket, age=age, beaten=beaten, family=family, sort=sort
+        session, q=q, tag_names=tags, bucket=bucket, age=age, beaten=beaten, sort=sort
     )
     return templates.TemplateResponse(
         request,
