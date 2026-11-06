@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import httpx
 from sqlmodel import Session, select
 
+from .dates import parse_release_date
 from . import hltb_client, protondb_client, steam_client, steamspy_client
 from .db import engine
 from .models import Game, GameTagLink, Tag
@@ -205,6 +206,7 @@ def apply_enrichment(session: Session, game: Game, data: dict, tag_cache: dict[s
         game.price_final_cents = price.get("final") if price else None
         release = details.get("release_date") or {}
         game.release_date = release.get("date")
+        game.release_date_iso = parse_release_date(game.release_date)
 
         rating, rating_system, age_numeric, required_age = steam_client.pick_age_rating(details)
         game.age_rating = rating

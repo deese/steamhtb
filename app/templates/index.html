@@ -123,6 +123,17 @@
         </div>
 
         <div>
+          <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Año de lanzamiento</label>
+          <select name="year" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
+            <option value="any">Cualquiera</option>
+            {% for y in release_years %}
+            <option value="{{ y }}">{{ y }}</option>
+            {% endfor %}
+            <option value="unknown">Sin fecha</option>
+          </select>
+        </div>
+
+        <div>
           <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Compatibilidad Linux (ProtonDB)</label>
           <select name="protondb" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
             <option value="any">Cualquiera</option>
@@ -144,6 +155,8 @@
             <option value="metacritic_desc">Nota Metacritic</option>
             <option value="reviews_desc">% de reseñas positivas</option>
             <option value="protondb_desc">Compatibilidad ProtonDB</option>
+            <option value="release_desc">Lanzamiento (más reciente)</option>
+            <option value="release_asc">Lanzamiento (más antiguo)</option>
           </select>
         </div>
 

@@ -1,3 +1,5 @@
+from datetime import date
+
 from sqlalchemy import func
 from sqlmodel import Session, select
 
@@ -27,6 +29,8 @@ SORT_OPTIONS: dict[str, tuple] = {
     "metacritic_desc": (Game.metacritic_score, "desc"),
     "reviews_desc": (Game.review_percent, "desc"),
     "protondb_desc": (Game.protondb_rank, "desc"),
+    "release_desc": (Game.release_date_iso, "desc"),
+    "release_asc": (Game.release_date_iso, "asc"),
 }
 
 # Minimum ProtonDB rank per filter option (see protondb_client.TIER_RANK).
@@ -42,6 +46,7 @@ def get_filtered_games(
     beaten: str = "any",
     sort: str = "name_asc",
     protondb: str = "any",
+    year: str = "any",
 ) -> list[Game]:
     stmt = select(Game)
 
@@ -76,6 +81,13 @@ def get_filtered_games(
         stmt = stmt.where(Game.age_rating_numeric >= lo)
         stmt = stmt.where(Game.age_rating_numeric <= hi)
 
+    if year == "unknown":
+        stmt = stmt.where(Game.release_date_iso.is_(None))
+    elif year.isdigit():
+        y = int(year)
+        stmt = stmt.where(Game.release_date_iso >= date(y, 1, 1))
+        stmt = stmt.where(Game.release_date_iso < date(y + 1, 1, 1))
+
     if protondb == "none":
         stmt = stmt.where(Game.protondb_rank.is_(None))
     elif protondb == "borked":
@@ -103,6 +115,16 @@ def get_filtered_games(
     stmt = stmt.order_by(order.nullslast() if hasattr(order, "nullslast") else order, Game.name.asc())
 
     return list(session.exec(stmt).unique().all())
+
+
+def get_release_years(session: Session) -> list[int]:
+    """Distinct release years present in the library, newest first."""
+    rows = session.exec(
+        select(func.distinct(func.strftime("%Y", Game.release_date_iso))).where(
+            Game.release_date_iso.is_not(None)
+        )
+    ).all()
+    return sorted((int(y) for y in rows if y), reverse=True)
 
 
 def get_tag_counts(session: Session, limit: int | None = None) -> list[tuple[str, int]]:

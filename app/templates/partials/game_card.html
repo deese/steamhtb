@@ -52,6 +52,9 @@
       {% elif game.hltb_id %}
       <span class="text-slate-600" title="Encontrado en HowLongToBeat como &quot;{{ game.hltb_title }}&quot;, pero sin tiempos enviados por la comunidad todavía">⏱ sin datos aún</span>
       {% endif %}
+      {% if game.release_date_iso %}
+      <span title="Fecha de lanzamiento: {{ game.release_date_iso.isoformat() }}">📅 {{ game.release_date_iso.year }}</span>
+      {% endif %}
       {% if game.protondb_tier and game.protondb_tier != 'pending' %}
       <a
         href="https://www.protondb.com/app/{{ game.appid }}"

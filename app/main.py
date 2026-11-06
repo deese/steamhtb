@@ -20,6 +20,7 @@ from .queries import (
     get_games_missing_hltb,
     get_games_missing_steamspy,
     get_library_stats,
+    get_release_years,
     get_tag_counts,
 )
 
@@ -90,6 +91,7 @@ async def index(request: Request, session: Session = Depends(get_session)):
         {
             "games": games,
             "tags": tags,
+            "release_years": get_release_years(session),
             "stats": stats,
             "status": sync.status,
             "configured": IS_CONFIGURED,
@@ -108,10 +110,19 @@ async def games_partial(
     beaten: str = "any",
     sort: str = "name_asc",
     protondb: str = "any",
+    year: str = "any",
     session: Session = Depends(get_session),
 ):
     games = get_filtered_games(
-        session, q=q, tag_names=tags, bucket=bucket, age=age, beaten=beaten, sort=sort, protondb=protondb
+        session,
+        q=q,
+        tag_names=tags,
+        bucket=bucket,
+        age=age,
+        beaten=beaten,
+        sort=sort,
+        protondb=protondb,
+        year=year,
     )
     return templates.TemplateResponse(
         request,

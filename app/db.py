@@ -1,6 +1,6 @@
 from sqlalchemy import text
 
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import SQLModel, Session, create_engine, select
 
 from .config import DATABASE_URL
 
@@ -21,6 +21,7 @@ _GAME_COLUMN_MIGRATIONS = {
     "steam_type": "VARCHAR",
     "trailer_url": "VARCHAR",
     "trailer_checked_at": "DATETIME",
+    "release_date_iso": "DATE",
     "protondb_tier": "VARCHAR",
     "protondb_rank": "INTEGER",
     "protondb_score": "FLOAT",
@@ -37,9 +38,32 @@ def _migrate_game_columns() -> None:
                 conn.execute(text(f"ALTER TABLE game ADD COLUMN {column} {ddl_type}"))
 
 
+def _backfill_release_dates() -> None:
+    """Parse release_date text for rows that predate release_date_iso. Purely
+    local (no network); rows whose text isn't a concrete date stay NULL and
+    are simply re-tried on the next start, which is cheap."""
+    from .dates import parse_release_date
+    from .models import Game
+
+    with Session(engine) as session:
+        games = session.exec(
+            select(Game).where(Game.release_date_iso.is_(None)).where(Game.release_date.is_not(None))
+        ).all()
+        changed = False
+        for game in games:
+            parsed = parse_release_date(game.release_date)
+            if parsed:
+                game.release_date_iso = parsed
+                session.add(game)
+                changed = True
+        if changed:
+            session.commit()
+
+
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
     _migrate_game_columns()
+    _backfill_release_dates()
 
 
 def get_session():

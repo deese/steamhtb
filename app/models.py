@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from sqlmodel import Field, Relationship, SQLModel
@@ -28,6 +28,9 @@ class Game(SQLModel, table=True):
     is_free: bool = False
     price_final_cents: Optional[int] = None
     release_date: Optional[str] = None
+    # Parsed form of release_date (which is Steam's localized free text, so
+    # it can't be sorted/filtered) — see dates.parse_release_date.
+    release_date_iso: Optional[date] = Field(default=None, index=True)
 
     age_rating: Optional[str] = None
     age_rating_system: Optional[str] = None
