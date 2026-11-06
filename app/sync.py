@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import httpx
 from sqlmodel import Session, select
 
-from . import hltb_client, steam_client, steamspy_client
+from . import hltb_client, protondb_client, steam_client, steamspy_client
 from .db import engine
 from .models import Game, GameTagLink, Tag
 from .ratelimit import RateLimiter
@@ -12,6 +12,7 @@ from .ratelimit import RateLimiter
 steam_limiter = RateLimiter(1.2)
 steam_reviews_limiter = RateLimiter(1.1)
 steamspy_limiter = RateLimiter(1.05)
+protondb_limiter = RateLimiter(0.5)
 
 GAME_CONCURRENCY = 4
 
@@ -145,6 +146,13 @@ async def fetch_enrichment(client: httpx.AsyncClient, appid: int, name: str, ski
     except Exception as exc:
         errors.append(f"{name}: store tags - {exc}")
 
+    await protondb_limiter.wait()
+    try:
+        protondb = await protondb_client.fetch_summary(client, appid)
+    except Exception as exc:
+        protondb = None
+        errors.append(f"{name}: protondb - {exc}")
+
     hltb = None
     if not skip_hltb:
         try:
@@ -158,9 +166,23 @@ async def fetch_enrichment(client: httpx.AsyncClient, appid: int, name: str, ski
         "spy": spy,
         "store_tags": store_tags,
         "hltb": hltb,
+        "protondb": protondb,
         "skip_hltb": skip_hltb,
         "errors": errors,
     }
+
+
+def apply_protondb(game: Game, summary: dict | None) -> None:
+    """None = transient failure (leave untouched, retried next sync);
+    {} = ProtonDB has no entry for this game."""
+    if summary is None:
+        return
+    tier = summary.get("tier")
+    game.protondb_tier = tier
+    game.protondb_rank = protondb_client.TIER_RANK.get(tier)
+    game.protondb_score = summary.get("score")
+    game.protondb_total = summary.get("total")
+    game.protondb_synced_at = datetime.now(timezone.utc)
 
 
 def apply_enrichment(session: Session, game: Game, data: dict, tag_cache: dict[str, int]) -> None:
@@ -244,6 +266,8 @@ def apply_enrichment(session: Session, game: Game, data: dict, tag_cache: dict[s
             session.add(GameTagLink(game_appid=game.appid, tag_id=tag_id))
     game.steamspy_synced_at = now
 
+    apply_protondb(game, data.get("protondb"))
+
     # A manual admin decision (match or "unavailable") owns hltb_* from then on.
     if not data["skip_hltb"]:
         hltb = data["hltb"]
@@ -277,6 +301,37 @@ async def _enrich_game(
 
     status["processed"] += 1
     status["current"] = name
+
+
+async def _protondb_backfill(client: httpx.AsyncClient) -> None:
+    """Fetch ProtonDB for already-synced games that predate this source (or
+    whose last attempt failed). One cheap request per game, no other APIs."""
+    with Session(engine) as session:
+        pending = session.exec(
+            select(Game.appid, Game.name)
+            .where(Game.steam_details_synced_at.is_not(None))
+            .where(Game.protondb_synced_at.is_(None))
+        ).all()
+
+    semaphore = asyncio.Semaphore(GAME_CONCURRENCY)
+
+    async def worker(appid: int, name: str) -> None:
+        async with semaphore:
+            await protondb_limiter.wait()
+            try:
+                summary = await protondb_client.fetch_summary(client, appid)
+            except Exception as exc:
+                status["errors"].append(f"{name}: protondb - {exc}")
+                return
+            async with db_write_lock:
+                with Session(engine) as session:
+                    game = session.get(Game, appid)
+                    if game:
+                        apply_protondb(game, summary)
+                        session.add(game)
+                        session.commit()
+
+    await asyncio.gather(*(worker(a, n) for a, n in pending))
 
 
 async def run_sync(force: bool = False) -> None:
@@ -337,6 +392,8 @@ async def run_sync(force: bool = False) -> None:
                     )
 
             await asyncio.gather(*(worker(entry) for entry in targets))
+
+            await _protondb_backfill(client)
 
         status["state"] = "done"
         status["finished_at"] = datetime.now(timezone.utc)

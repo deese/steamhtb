@@ -72,6 +72,15 @@ class Game(SQLModel, table=True):
     hltb_manual_override: bool = False
     hltb_unavailable: bool = False
 
+    # ProtonDB (Linux/Steam Deck compatibility). protondb_rank is the tier as
+    # an int (see protondb_client.TIER_RANK) so it can be filtered/sorted in
+    # SQL. protondb_synced_at set with a null tier means "looked, no entry".
+    protondb_tier: Optional[str] = None
+    protondb_rank: Optional[int] = None
+    protondb_score: Optional[float] = None
+    protondb_total: Optional[int] = None
+    protondb_synced_at: Optional[datetime] = None
+
     owned_synced_at: Optional[datetime] = None
     steam_details_synced_at: Optional[datetime] = None
     steamspy_synced_at: Optional[datetime] = None

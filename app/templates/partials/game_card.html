@@ -52,6 +52,15 @@
       {% elif game.hltb_id %}
       <span class="text-slate-600" title="Encontrado en HowLongToBeat como &quot;{{ game.hltb_title }}&quot;, pero sin tiempos enviados por la comunidad todavía">⏱ sin datos aún</span>
       {% endif %}
+      {% if game.protondb_tier and game.protondb_tier != 'pending' %}
+      <a
+        href="https://www.protondb.com/app/{{ game.appid }}"
+        target="_blank"
+        rel="noopener"
+        class="{{ {'platinum': 'text-cyan-300', 'gold': 'text-yellow-400', 'silver': 'text-slate-300', 'bronze': 'text-orange-400', 'borked': 'text-red-400', 'native': 'text-green-400'}.get(game.protondb_tier, 'text-slate-400') }} hover:underline"
+        title="ProtonDB: {{ game.protondb_tier }} ({{ game.protondb_total or 0 }} informes)"
+      >🐧 {{ game.protondb_tier }}</a>
+      {% endif %}
       {% if game.review_percent is not none %}
       <span title="{{ game.review_positive }} positivas / {{ game.review_negative }} negativas">
         👍 {{ game.review_percent }}% ({{ ((game.review_positive or 0) + (game.review_negative or 0))|format_count }})

@@ -123,6 +123,18 @@
         </div>
 
         <div>
+          <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Compatibilidad Linux (ProtonDB)</label>
+          <select name="protondb" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
+            <option value="any">Cualquiera</option>
+            <option value="platinum">Platinum</option>
+            <option value="gold">Gold o mejor</option>
+            <option value="silver">Silver o mejor</option>
+            <option value="borked">Borked (no funciona)</option>
+            <option value="none">Sin datos</option>
+          </select>
+        </div>
+
+        <div>
           <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Ordenar por</label>
           <select name="sort" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
             <option value="name_asc">Nombre (A-Z)</option>
@@ -131,6 +143,7 @@
             <option value="hltb_desc">Duración (mayor primero)</option>
             <option value="metacritic_desc">Nota Metacritic</option>
             <option value="reviews_desc">% de reseñas positivas</option>
+            <option value="protondb_desc">Compatibilidad ProtonDB</option>
           </select>
         </div>
 

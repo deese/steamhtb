@@ -26,7 +26,11 @@ SORT_OPTIONS: dict[str, tuple] = {
     "hltb_desc": (Game.hltb_main, "desc"),
     "metacritic_desc": (Game.metacritic_score, "desc"),
     "reviews_desc": (Game.review_percent, "desc"),
+    "protondb_desc": (Game.protondb_rank, "desc"),
 }
+
+# Minimum ProtonDB rank per filter option (see protondb_client.TIER_RANK).
+PROTONDB_MIN_RANK = {"platinum": 5, "gold": 4, "silver": 3}
 
 
 def get_filtered_games(
@@ -37,6 +41,7 @@ def get_filtered_games(
     age: str = "any",
     beaten: str = "any",
     sort: str = "name_asc",
+    protondb: str = "any",
 ) -> list[Game]:
     stmt = select(Game)
 
@@ -70,6 +75,13 @@ def get_filtered_games(
         stmt = stmt.where(Game.age_rating_numeric.is_not(None))
         stmt = stmt.where(Game.age_rating_numeric >= lo)
         stmt = stmt.where(Game.age_rating_numeric <= hi)
+
+    if protondb == "none":
+        stmt = stmt.where(Game.protondb_rank.is_(None))
+    elif protondb == "borked":
+        stmt = stmt.where(Game.protondb_rank == 1)
+    elif protondb in PROTONDB_MIN_RANK:
+        stmt = stmt.where(Game.protondb_rank >= PROTONDB_MIN_RANK[protondb])
 
     # No stored/calculated column needed — just compare the two existing
     # columns directly in the query. At this scale (a personal library, not

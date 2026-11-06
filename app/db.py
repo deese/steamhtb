@@ -21,6 +21,11 @@ _GAME_COLUMN_MIGRATIONS = {
     "steam_type": "VARCHAR",
     "trailer_url": "VARCHAR",
     "trailer_checked_at": "DATETIME",
+    "protondb_tier": "VARCHAR",
+    "protondb_rank": "INTEGER",
+    "protondb_score": "FLOAT",
+    "protondb_total": "INTEGER",
+    "protondb_synced_at": "DATETIME",
 }
 
 
