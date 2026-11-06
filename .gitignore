@@ -7,3 +7,4 @@ data/*.db-journal
 data/*.json
 .DS_Store
 .claude/settings.local.json
+docker-compose.yml

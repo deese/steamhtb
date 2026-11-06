@@ -21,8 +21,10 @@ services:
     # you want to hit it directly without going through NPM (e.g. bound to a
     # specific host IP, matching the Tailscale-only setup used for the plain
     # uvicorn deployment):
-    # ports:
-    #   - "100.125.0.127:8000:8000"
+    # Replace with your host's Tailscale IP (`tailscale ip -4`) so the app is
+    # only reachable from your tailnet, not the LAN or the internet.
+    ports:
+      - "<TAILSCALE_IP>:8000:8000"
 
 volumes:
   steamhtb_data:

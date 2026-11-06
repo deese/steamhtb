@@ -95,16 +95,19 @@ Tested with a real `docker build` + container run (routes `/`, `/admin`,
 `/steamguess`, DB migration and volume persistence all verified).
 
 ```bash
+cp docker-compose.sample.yml docker-compose.yml   # then edit it, see below
 docker compose up -d --build
 ```
 
 - Environment variables: `STEAM_API_KEY`, `STEAM_ID`, plus the optional login
   variables above if you want the login gate on.
-- `docker-compose.yml` is set up to join an external reverse-proxy network
-  (`shared_proxy_network`) without publishing any port to the host — adjust
-  this to however you route traffic to containers in your own setup (a
-  different external network name, or a `ports:` mapping if you don't use a
-  reverse proxy at all).
+- `docker-compose.yml` is your own local copy (git-ignored) of
+  `docker-compose.sample.yml`, so host-specific values never get committed.
+  The sample joins an external reverse-proxy network (`shared_proxy_network`)
+  and publishes the port on `<TAILSCALE_IP>` (`tailscale ip -4`) so it is only
+  reachable from your tailnet. Adjust it to however you route traffic to
+  containers in your own setup: a different external network name, or drop the
+  `ports:` mapping if a reverse proxy reaches it directly.
 - SQLite data persists in the named volume `steamhtb_data`, independent of the
   container's lifecycle.
 
