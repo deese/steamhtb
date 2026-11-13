@@ -1,6 +1,7 @@
 from datetime import date
 
 from sqlalchemy import func
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from .models import Game, GameTagLink, Tag
@@ -48,7 +49,9 @@ def get_filtered_games(
     protondb: str = "any",
     year: str = "any",
 ) -> list[Game]:
-    stmt = select(Game)
+    # Eager-load tags in one extra query; the cards read game.tags, which would
+    # otherwise lazy-load one query per game (N+1).
+    stmt = select(Game).options(selectinload(Game.tags))
 
     if q:
         stmt = stmt.where(Game.name.ilike(f"%{q}%"))
