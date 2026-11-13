@@ -6,7 +6,9 @@ from sqlmodel import Field, Relationship, SQLModel
 
 class GameTagLink(SQLModel, table=True):
     game_appid: int = Field(foreign_key="game.appid", primary_key=True)
-    tag_id: int = Field(foreign_key="tag.id", primary_key=True)
+    # The composite PK only serves lookups by game_appid; the tag filter goes
+    # the other way (tag -> games), so it needs its own index.
+    tag_id: int = Field(foreign_key="tag.id", primary_key=True, index=True)
 
 
 class Tag(SQLModel, table=True):
@@ -20,7 +22,7 @@ class Game(SQLModel, table=True):
     appid: int = Field(primary_key=True)
     name: str = Field(index=True)
 
-    playtime_minutes: int = 0
+    playtime_minutes: int = Field(default=0, index=True)
     header_image: Optional[str] = None
     store_url: Optional[str] = None
 
@@ -40,15 +42,15 @@ class Game(SQLModel, table=True):
     # almost everything regardless of the actual content rating (a PEGI 18
     # game like Darksiders has required_age=0 — Steam only gates checkout for
     # a small subset of explicitly adult content).
-    age_rating_numeric: Optional[int] = None
+    age_rating_numeric: Optional[int] = Field(default=None, index=True)
     required_age: Optional[int] = None
 
-    metacritic_score: Optional[int] = None
+    metacritic_score: Optional[int] = Field(default=None, index=True)
     metacritic_url: Optional[str] = None
 
     review_positive: Optional[int] = None
     review_negative: Optional[int] = None
-    review_percent: Optional[float] = None
+    review_percent: Optional[float] = Field(default=None, index=True)
     # Steam's own descriptor ("Very Positive", "Mixed"...) from the same
     # appreviews call — used to group/filter in the "steamguess" roulette.
     review_score_desc: Optional[str] = None
@@ -66,7 +68,7 @@ class Game(SQLModel, table=True):
 
     hltb_id: Optional[int] = None
     hltb_title: Optional[str] = None
-    hltb_main: Optional[float] = None
+    hltb_main: Optional[float] = Field(default=None, index=True)
     hltb_main_extra: Optional[float] = None
     hltb_completionist: Optional[float] = None
     hltb_similarity: Optional[float] = None
@@ -79,7 +81,7 @@ class Game(SQLModel, table=True):
     # an int (see protondb_client.TIER_RANK) so it can be filtered/sorted in
     # SQL. protondb_synced_at set with a null tier means "looked, no entry".
     protondb_tier: Optional[str] = None
-    protondb_rank: Optional[int] = None
+    protondb_rank: Optional[int] = Field(default=None, index=True)
     protondb_score: Optional[float] = None
     protondb_total: Optional[int] = None
     protondb_synced_at: Optional[datetime] = None

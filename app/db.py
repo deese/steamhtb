@@ -29,6 +29,22 @@ _GAME_COLUMN_MIGRATIONS = {
     "protondb_synced_at": "DATETIME",
 }
 
+# Indexes for columns the filters/sorts hit. create_all() only indexes brand
+# new tables, so existing databases get them here. Names match what SQLModel
+# generates (ix_<table>_<column>) so both paths agree.
+_INDEXES = {
+    "game": [
+        "playtime_minutes",
+        "age_rating_numeric",
+        "metacritic_score",
+        "review_percent",
+        "hltb_main",
+        "protondb_rank",
+        "release_date_iso",
+    ],
+    "gametaglink": ["tag_id"],
+}
+
 
 def _migrate_game_columns() -> None:
     with engine.begin() as conn:
@@ -36,6 +52,13 @@ def _migrate_game_columns() -> None:
         for column, ddl_type in _GAME_COLUMN_MIGRATIONS.items():
             if column not in existing:
                 conn.execute(text(f"ALTER TABLE game ADD COLUMN {column} {ddl_type}"))
+
+
+def _ensure_indexes() -> None:
+    with engine.begin() as conn:
+        for table, columns in _INDEXES.items():
+            for column in columns:
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table}_{column} ON {table} ({column})"))
 
 
 def _backfill_release_dates() -> None:
@@ -63,6 +86,7 @@ def _backfill_release_dates() -> None:
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
     _migrate_game_columns()
+    _ensure_indexes()
     _backfill_release_dates()
 
 

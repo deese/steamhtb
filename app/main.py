@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
 from . import auth, config, sync
 from .admin import router as admin_router
@@ -52,6 +53,8 @@ class LoginRequiredMiddleware(BaseHTTPMiddleware):
 
 app = FastAPI(title="Steam x HowLongToBeat Library", lifespan=lifespan)
 app.add_middleware(LoginRequiredMiddleware)
+# Outermost: the grid is ~3 MB of repetitive HTML, which compresses ~15x.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="static")
 app.include_router(admin_router)
 app.include_router(steamguess_router)
