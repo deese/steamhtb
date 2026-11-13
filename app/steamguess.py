@@ -132,7 +132,12 @@ async def roll_games(
     tags: list[str],
 ) -> list[Game]:
     max_minutes = int(max_hours * 60)
-    stmt = select(Game).where(Game.playtime_minutes <= max_minutes)
+    # Games marked finished/abandoned by hand are done with — not backlog.
+    stmt = (
+        select(Game)
+        .where(Game.playtime_minutes <= max_minutes)
+        .where(Game.play_status.is_(None))
+    )
     candidates = list(session.exec(stmt).unique().all())
 
     if genres:

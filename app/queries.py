@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
@@ -38,6 +38,12 @@ SORT_OPTIONS: dict[str, tuple] = {
 PROTONDB_MIN_RANK = {"platinum": 5, "gold": 4, "silver": 3}
 
 
+# Minimum review_percent per filter option.
+REVIEW_MIN = {"95": 95, "90": 90, "80": 80, "70": 70}
+
+PLAY_STATUSES = ("finished", "abandoned")
+
+
 def get_filtered_games(
     session: Session,
     q: str = "",
@@ -48,6 +54,8 @@ def get_filtered_games(
     sort: str = "name_asc",
     protondb: str = "any",
     year: str = "any",
+    reviews: str = "any",
+    status: str = "any",
 ) -> list[Game]:
     # Eager-load tags in one extra query; the cards read game.tags, which would
     # otherwise lazy-load one query per game (N+1).
@@ -91,6 +99,16 @@ def get_filtered_games(
         stmt = stmt.where(Game.release_date_iso >= date(y, 1, 1))
         stmt = stmt.where(Game.release_date_iso < date(y + 1, 1, 1))
 
+    if reviews == "none":
+        stmt = stmt.where(Game.review_percent.is_(None))
+    elif reviews in REVIEW_MIN:
+        stmt = stmt.where(Game.review_percent >= REVIEW_MIN[reviews])
+
+    if status == "unmarked":
+        stmt = stmt.where(Game.play_status.is_(None))
+    elif status in PLAY_STATUSES:
+        stmt = stmt.where(Game.play_status == status)
+
     if protondb == "none":
         stmt = stmt.where(Game.protondb_rank.is_(None))
     elif protondb == "borked":
@@ -107,10 +125,15 @@ def get_filtered_games(
         # hltb_main should never be stored as exactly 0 (every write path
         # converts "no data" to NULL instead) but guard here too: a 0 would
         # make `played_hours >= hltb_main` trivially true for every game.
-        stmt = stmt.where(Game.hltb_main.is_not(None))
-        stmt = stmt.where(Game.hltb_main > 0)
         played_hours = Game.playtime_minutes / 60.0
-        stmt = stmt.where(played_hours >= Game.hltb_main if beaten == "yes" else played_hours < Game.hltb_main)
+        has_hltb = and_(Game.hltb_main.is_not(None), Game.hltb_main > 0)
+        marked_finished = Game.play_status == "finished"
+        if beaten == "yes":
+            # Manually marked finished counts even with few hours/no HLTB data.
+            stmt = stmt.where(or_(marked_finished, and_(has_hltb, played_hours >= Game.hltb_main)))
+        else:
+            stmt = stmt.where(has_hltb, played_hours < Game.hltb_main)
+            stmt = stmt.where(or_(Game.play_status.is_(None), Game.play_status != "finished"))
 
     column, direction = SORT_OPTIONS.get(sort, SORT_OPTIONS["name_asc"])
     order = column.desc() if direction == "desc" else column.asc()

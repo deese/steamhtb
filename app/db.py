@@ -27,6 +27,7 @@ _GAME_COLUMN_MIGRATIONS = {
     "protondb_score": "FLOAT",
     "protondb_total": "INTEGER",
     "protondb_synced_at": "DATETIME",
+    "play_status": "VARCHAR",
 }
 
 # Indexes for columns the filters/sorts hit. create_all() only indexes brand
@@ -41,6 +42,7 @@ _INDEXES = {
         "hltb_main",
         "protondb_rank",
         "release_date_iso",
+        "play_status",
     ],
     "gametaglink": ["tag_id"],
 }

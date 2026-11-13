@@ -1,6 +1,25 @@
 {% extends "base.html" %}
 
 {% block content %}
+<script>
+  // Remember the last filter set: restore it when opening the bare "/" and
+  // keep it up to date whenever htmx pushes a new filtered URL.
+  (function () {
+    var KEY = "steamhtb:filters";
+    try {
+      if (!location.search) {
+        var saved = localStorage.getItem(KEY);
+        if (saved) location.replace("/" + saved);
+      }
+    } catch (e) {}
+    document.addEventListener("htmx:pushedIntoHistory", function (evt) {
+      try {
+        var q = (evt.detail.path.split("?")[1] || "");
+        if (q) localStorage.setItem(KEY, "?" + q); else localStorage.removeItem(KEY);
+      } catch (e) {}
+    });
+  })();
+</script>
 <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
 
   <header class="flex flex-col gap-4 mb-6">
@@ -66,7 +85,30 @@
 
   <div class="flex flex-col lg:flex-row gap-6">
 
-    <aside class="lg:w-72 shrink-0" x-data="{ open: false }">
+    <aside
+      class="lg:w-72 shrink-0"
+      x-data="{
+        open: false,
+        active: 0,
+        update() {
+          const f = this.$refs.filters;
+          let n = 0;
+          f.querySelectorAll('select').forEach(s => { if (s.name !== 'sort' && s.selectedIndex > 0) n++; });
+          if (f.elements.q.value.trim()) n++;
+          n += f.querySelectorAll('input[name=tags]:checked').length;
+          this.active = n;
+        },
+        clear() {
+          const f = this.$refs.filters;
+          f.elements.q.value = '';
+          f.querySelectorAll('select').forEach(s => { s.selectedIndex = 0; });
+          f.querySelectorAll('input[name=tags]:checked').forEach(i => { i.checked = false; });
+          this.update();
+          htmx.trigger(f, 'change');
+        }
+      }"
+      x-init="update()"
+    >
       <button
         type="button"
         @click="open = !open"
@@ -80,102 +122,124 @@
             <path stroke-linecap="round" d="M6 6l12 12M18 6L6 18" x-show="open" x-cloak />
           </svg>
           Filtros
+          <span
+            x-show="active > 0"
+            x-text="active"
+            x-cloak
+            class="text-[10px] font-bold bg-steam-accent text-slate-900 rounded-full px-1.5 py-0.5"
+          ></span>
         </span>
         <span class="text-xs text-slate-400" x-text="open ? 'Ocultar' : 'Mostrar'"></span>
       </button>
       <form
         id="filters"
+        x-ref="filters"
         hx-get="/games"
         hx-target="#game-grid"
         hx-swap="innerHTML"
         hx-trigger="input changed delay:400ms from:#q, change"
         hx-indicator="#grid-loading"
+        @change="update()"
+        @input="update()"
         :class="{ 'hidden': !open }"
         class="lg:!block mt-3 lg:mt-0 lg:sticky lg:top-6 space-y-5 bg-steam-panel/60 border border-steam-line rounded-lg p-4"
       >
+        <div class="flex items-center justify-between" x-show="active > 0" x-cloak>
+          <span class="text-xs text-slate-400">
+            <span x-text="active"></span> filtro<span x-show="active !== 1">s</span> activo<span x-show="active !== 1">s</span>
+          </span>
+          <button type="button" @click="clear()" class="text-xs text-steam-accent hover:underline">
+            Limpiar todo
+          </button>
+        </div>
+
         <div>
           <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Buscar</label>
           <input
             type="text"
             id="q"
             name="q"
+            value="{{ f.q }}"
             placeholder="Nombre del juego..."
             class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent"
           />
         </div>
 
+        {% macro filter_select(name, label, options) %}
         <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Duración (HowLongToBeat)</label>
-          <select name="bucket" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
-            <option value="any">Cualquier duración</option>
-            <option value="lt8">Menos de 8h</option>
-            <option value="8-15">8h – 15h</option>
-            <option value="15-30">15h – 30h</option>
-            <option value="30-50">30h – 50h</option>
-            <option value="50plus">Más de 50h</option>
-            <option value="nodata">Sin datos de duración</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Clasificación por edad</label>
-          <select name="age" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
-            <option value="any">Cualquier edad</option>
-            <option value="0-3">Para todos los públicos</option>
-            <option value="7">+7</option>
-            <option value="12">+12</option>
-            <option value="16">+16</option>
-            <option value="18">+18</option>
-            <option value="unrated">Sin clasificar</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">¿Me lo he pasado?</label>
-          <select name="beaten" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
-            <option value="any">Cualquiera</option>
-            <option value="yes">✅ Horas jugadas ≥ duración historia</option>
-            <option value="no">Aún no (según HLTB)</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Año de lanzamiento</label>
-          <select name="year" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
-            <option value="any">Cualquiera</option>
-            {% for y in release_years %}
-            <option value="{{ y }}">{{ y }}</option>
+          <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">{{ label }}</label>
+          <select name="{{ name }}" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
+            {% for value, text in options %}
+            <option value="{{ value }}" {% if f[name] == value %}selected{% endif %}>{{ text }}</option>
             {% endfor %}
-            <option value="unknown">Sin fecha</option>
           </select>
         </div>
+        {% endmacro %}
 
-        <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Compatibilidad Linux (ProtonDB)</label>
-          <select name="protondb" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
-            <option value="any">Cualquiera</option>
-            <option value="platinum">Platinum</option>
-            <option value="gold">Gold o mejor</option>
-            <option value="silver">Silver o mejor</option>
-            <option value="borked">Borked (no funciona)</option>
-            <option value="none">Sin datos</option>
-          </select>
-        </div>
+        {{ filter_select("bucket", "Duración (HowLongToBeat)", [
+          ("any", "Cualquier duración"),
+          ("lt8", "Menos de 8h"),
+          ("8-15", "8h – 15h"),
+          ("15-30", "15h – 30h"),
+          ("30-50", "30h – 50h"),
+          ("50plus", "Más de 50h"),
+          ("nodata", "Sin datos de duración"),
+        ]) }}
 
-        <div>
-          <label class="text-xs font-semibold uppercase tracking-wide text-slate-400">Ordenar por</label>
-          <select name="sort" class="mt-1.5 w-full bg-steam-bg border border-steam-line rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-steam-accent">
-            <option value="name_asc">Nombre (A-Z)</option>
-            <option value="playtime_desc">Horas jugadas (Steam)</option>
-            <option value="hltb_asc">Duración (menor primero)</option>
-            <option value="hltb_desc">Duración (mayor primero)</option>
-            <option value="metacritic_desc">Nota Metacritic</option>
-            <option value="reviews_desc">% de reseñas positivas</option>
-            <option value="protondb_desc">Compatibilidad ProtonDB</option>
-            <option value="release_desc">Lanzamiento (más reciente)</option>
-            <option value="release_asc">Lanzamiento (más antiguo)</option>
-          </select>
-        </div>
+        {{ filter_select("age", "Clasificación por edad", [
+          ("any", "Cualquier edad"),
+          ("0-3", "Para todos los públicos"),
+          ("7", "+7"),
+          ("12", "+12"),
+          ("16", "+16"),
+          ("18", "+18"),
+          ("unrated", "Sin clasificar"),
+        ]) }}
+
+        {{ filter_select("beaten", "¿Me lo he pasado?", [
+          ("any", "Cualquiera"),
+          ("yes", "✅ Marcado terminado u horas ≥ historia"),
+          ("no", "Aún no (según HLTB, sin marcar)"),
+        ]) }}
+
+        {{ filter_select("status", "Mi estado", [
+          ("any", "Cualquiera"),
+          ("finished", "✔ Terminado"),
+          ("abandoned", "✖ Abandonado"),
+          ("unmarked", "Sin marcar"),
+        ]) }}
+
+        {{ filter_select("reviews", "Reseñas positivas (Steam)", [
+          ("any", "Cualquiera"),
+          ("95", "95% o más"),
+          ("90", "90% o más"),
+          ("80", "80% o más"),
+          ("70", "70% o más"),
+          ("none", "Sin reseñas"),
+        ]) }}
+
+        {{ filter_select("year", "Año de lanzamiento", year_options) }}
+
+        {{ filter_select("protondb", "Compatibilidad Linux (ProtonDB)", [
+          ("any", "Cualquiera"),
+          ("platinum", "Platinum"),
+          ("gold", "Gold o mejor"),
+          ("silver", "Silver o mejor"),
+          ("borked", "Borked (no funciona)"),
+          ("none", "Sin datos"),
+        ]) }}
+
+        {{ filter_select("sort", "Ordenar por", [
+          ("name_asc", "Nombre (A-Z)"),
+          ("playtime_desc", "Horas jugadas (Steam)"),
+          ("hltb_asc", "Duración (menor primero)"),
+          ("hltb_desc", "Duración (mayor primero)"),
+          ("metacritic_desc", "Nota Metacritic"),
+          ("reviews_desc", "% de reseñas positivas"),
+          ("protondb_desc", "Compatibilidad ProtonDB"),
+          ("release_desc", "Lanzamiento (más reciente)"),
+          ("release_asc", "Lanzamiento (más antiguo)"),
+        ]) }}
 
         <div x-data="{ tagFilter: '' }">
           <div class="flex items-center justify-between">
@@ -201,7 +265,7 @@
               class="flex items-center justify-between gap-2 text-sm text-slate-300 hover:text-white cursor-pointer py-0.5"
             >
               <span class="flex items-center gap-2 truncate">
-                <input type="checkbox" name="tags" value="{{ tag_name }}" class="rounded border-steam-line bg-steam-bg text-steam-accent focus:ring-steam-accent" />
+                <input type="checkbox" name="tags" value="{{ tag_name }}" {% if tag_name in f.tag_names %}checked{% endif %} class="rounded border-steam-line bg-steam-bg text-steam-accent focus:ring-steam-accent" />
                 <span class="truncate">{{ tag_name }}</span>
               </span>
               <span class="text-[11px] text-slate-500">{{ count }}</span>

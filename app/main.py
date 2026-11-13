@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Query, Request
+from urllib.parse import urlencode
+
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -15,7 +17,9 @@ from .steamguess import router as steamguess_router
 from .steamguess import templates as steamguess_templates
 from .config import BASE_DIR, IS_CONFIGURED
 from .db import get_session, init_db
+from .models import Game
 from .queries import (
+    PLAY_STATUSES,
     get_filtered_games,
     get_games_hltb_unavailable,
     get_games_missing_hltb,
@@ -78,9 +82,72 @@ def format_count(n: int | None) -> str:
 templates.env.filters["format_count"] = format_count
 
 
+# Filter defaults. Anything equal to its default is left out of the URL so
+# shared/bookmarked links stay short.
+FILTER_DEFAULTS = {
+    "q": "",
+    "tag_names": [],
+    "bucket": "any",
+    "age": "any",
+    "beaten": "any",
+    "sort": "name_asc",
+    "protondb": "any",
+    "year": "any",
+    "reviews": "any",
+    "status": "any",
+}
+# Query-string name for each filter (only the tag list differs).
+_QS_NAME = {"tag_names": "tags"}
+
+
+def filter_params(
+    q: str = "",
+    tags: list[str] = Query(default=[]),
+    bucket: str = "any",
+    age: str = "any",
+    beaten: str = "any",
+    sort: str = "name_asc",
+    protondb: str = "any",
+    year: str = "any",
+    reviews: str = "any",
+    status: str = "any",
+) -> dict:
+    return {
+        "q": q,
+        "tag_names": tags,
+        "bucket": bucket,
+        "age": age,
+        "beaten": beaten,
+        "sort": sort,
+        "protondb": protondb,
+        "year": year,
+        "reviews": reviews,
+        "status": status,
+    }
+
+
+def filters_url(filters: dict) -> str:
+    """Canonical page URL for a filter set (what the browser shows/bookmarks)."""
+    pairs = []
+    for key, default in FILTER_DEFAULTS.items():
+        value = filters[key]
+        if value == default:
+            continue
+        name = _QS_NAME.get(key, key)
+        if isinstance(value, list):
+            pairs.extend((name, v) for v in value)
+        else:
+            pairs.append((name, value))
+    return "/?" + urlencode(pairs) if pairs else "/"
+
+
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request, session: Session = Depends(get_session)):
-    games = get_filtered_games(session)
+async def index(
+    request: Request,
+    filters: dict = Depends(filter_params),
+    session: Session = Depends(get_session),
+):
+    games = get_filtered_games(session, **filters)
     tags = get_tag_counts(session)
     stats = get_library_stats(session)
     admin_pending = (
@@ -88,13 +155,17 @@ async def index(request: Request, session: Session = Depends(get_session)):
         + len(get_games_hltb_unavailable(session))
         + len(get_games_missing_steamspy(session))
     )
+    years = get_release_years(session)
     return templates.TemplateResponse(
         request,
         "index.html",
         {
             "games": games,
             "tags": tags,
-            "release_years": get_release_years(session),
+            "f": filters,
+            "year_options": [("any", "Cualquiera")]
+            + [(str(y), str(y)) for y in years]
+            + [("unknown", "Sin fecha")],
             "stats": stats,
             "status": sync.status,
             "configured": IS_CONFIGURED,
@@ -106,32 +177,37 @@ async def index(request: Request, session: Session = Depends(get_session)):
 @app.get("/games", response_class=HTMLResponse)
 async def games_partial(
     request: Request,
-    q: str = "",
-    tags: list[str] = Query(default=[]),
-    bucket: str = "any",
-    age: str = "any",
-    beaten: str = "any",
-    sort: str = "name_asc",
-    protondb: str = "any",
-    year: str = "any",
+    filters: dict = Depends(filter_params),
     session: Session = Depends(get_session),
 ):
-    games = get_filtered_games(
-        session,
-        q=q,
-        tag_names=tags,
-        bucket=bucket,
-        age=age,
-        beaten=beaten,
-        sort=sort,
-        protondb=protondb,
-        year=year,
-    )
+    games = get_filtered_games(session, **filters)
     return templates.TemplateResponse(
         request,
         "partials/game_grid.html",
         {"games": games},
+        # The browser's address bar should show the full page with these
+        # filters (/?bucket=...), not this partial endpoint.
+        headers={"HX-Push-Url": filters_url(filters)},
     )
+
+
+@app.post("/games/{appid}/status/{value}", response_class=HTMLResponse)
+async def set_play_status(
+    request: Request,
+    appid: int,
+    value: str,
+    session: Session = Depends(get_session),
+):
+    """Mark a game finished/abandoned (any other value clears it). Returns the
+    re-rendered card so htmx can swap it in place."""
+    game = session.get(Game, appid)
+    if game is None:
+        raise HTTPException(status_code=404)
+    game.play_status = value if value in PLAY_STATUSES else None
+    session.add(game)
+    session.commit()
+    session.refresh(game)
+    return templates.TemplateResponse(request, "partials/game_card.html", {"game": game})
 
 
 @app.post("/sync", response_class=HTMLResponse)

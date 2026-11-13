@@ -86,6 +86,10 @@ class Game(SQLModel, table=True):
     protondb_total: Optional[int] = None
     protondb_synced_at: Optional[datetime] = None
 
+    # Manual "I'm done with it" marker, set from the card: "finished" or
+    # "abandoned" (NULL = unmarked). Owned by the user — sync never touches it.
+    play_status: Optional[str] = Field(default=None, index=True)
+
     owned_synced_at: Optional[datetime] = None
     steam_details_synced_at: Optional[datetime] = None
     steamspy_synced_at: Optional[datetime] = None

@@ -1,4 +1,4 @@
-<div class="bg-steam-card rounded-lg overflow-hidden border border-steam-line hover:border-steam-accent/60 transition-colors group flex flex-col relative">
+<div hx-target="this" hx-swap="outerHTML" class="bg-steam-card rounded-lg overflow-hidden border {{ 'border-green-600/70' if game.play_status == 'finished' else 'border-steam-line' }}{{ ' opacity-60 hover:opacity-100' if game.play_status == 'abandoned' }} hover:border-steam-accent/60 transition-colors group flex flex-col relative">
   {% if not game.steam_details_synced_at %}
   <span
     class="absolute top-2 left-2 z-10 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-black/70 text-yellow-300 border border-yellow-700/50"
@@ -39,13 +39,22 @@
 
     <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400 mt-1.5">
       <span title="Horas jugadas en Steam">🎮 {{ "%.0f"|format(game.playtime_minutes / 60) }}h jugadas</span>
+      {% if game.play_status == 'finished' %}
+      <span class="text-steam-accent2" title="Marcado como terminado">✅</span>
+      {% endif %}
       {% if game.hltb_main %}
       <span title="HowLongToBeat · historia principal">⏱ {{ "%.0f"|format(game.hltb_main) }}h historia</span>
-      {% if (game.playtime_minutes / 60) >= game.hltb_main %}
+      {% if game.play_status != 'finished' and (game.playtime_minutes / 60) >= game.hltb_main %}
       <span
         class="text-steam-accent2"
         title="Horas jugadas ≥ duración estimada de la historia principal — puede que te lo hayas pasado (no es seguro al 100%)"
       >✅</span>
+      {% endif %}
+      {% if game.hltb_main_extra or game.hltb_completionist %}
+      <span
+        class="text-slate-500"
+        title="HowLongToBeat · historia + extras / completista"
+      >({% if game.hltb_main_extra %}+extras {{ "%.0f"|format(game.hltb_main_extra) }}h{% endif %}{% if game.hltb_main_extra and game.hltb_completionist %} · {% endif %}{% if game.hltb_completionist %}100% {{ "%.0f"|format(game.hltb_completionist) }}h{% endif %})</span>
       {% endif %}
       {% elif game.hltb_unavailable %}
       <span class="text-slate-600" title="Marcado manualmente como no disponible en HowLongToBeat">⏱ N/D en HLTB</span>
@@ -79,6 +88,10 @@
     </div>
     {% endif %}
 
-    <div class="mt-auto"></div>
+    <div class="mt-auto pt-3 flex gap-1.5">
+      {# hx-target/hx-swap are inherited from the card root: the response replaces the whole card. #}
+      <button class="st-btn{{ ' on-finished' if game.play_status == 'finished' }}" hx-post="/games/{{ game.appid }}/status/{{ 'clear' if game.play_status == 'finished' else 'finished' }}">✔ Terminado</button>
+      <button class="st-btn{{ ' on-abandoned' if game.play_status == 'abandoned' }}" hx-post="/games/{{ game.appid }}/status/{{ 'clear' if game.play_status == 'abandoned' else 'abandoned' }}">✖ Abandonado</button>
+    </div>
   </div>
 </div>
